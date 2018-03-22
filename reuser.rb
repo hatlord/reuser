@@ -27,3 +27,8 @@ end
 
 puts "Hashes in clean format for cracking...."
 clean_hashes.each {|hash| puts "#{hash[0]}_#{hash[1]}_#{hash[3]}"}
+
+puts "\nAffected hosts"
+
+affected_hosts = clean_hashes.uniq { |e| e[0]}
+affected_hosts.each {|a| puts "#{a[0]}\t#{a[2]}"}
