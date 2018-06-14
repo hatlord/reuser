@@ -1,34 +1,71 @@
 #!/usr/bin/env ruby
 #Takes CME output and groups based on hash for reuse identification
 require 'pp'
+require 'colorize'
+require 'tty-prompt'
 
-cme_output   = File.readlines(ARGV[0])
-cme_output   = cme_output.keep_if { |line| line.include?(":::") }
-cme_output   = cme_output.delete_if { |line| line.include?("Guest")}
-clean_hashes = []
-
-cme_output.each { |line| clean_hashes << line.split(/[ ]{2,}/)[1..100]} #cant split like this, it breaks usernames with spaces
-grouped_hashes = clean_hashes.group_by {|ele| ele[3].split(":")[3]}
-
-
-count = 1
-grouped_hashes.each do |k, v|
-  if v.length > 1
-    puts "GROUP: #{count}"
-    puts "IP Address\tHostname\tUser"
-    v.each do |val|
-      user = val[3].split(":")[0]
-      puts "#{val[0]}\t#{val[2]}\t#{user}"
-    end
-    puts "\r\n"
-    count += 1
-  end
+def read_cme_files
+  sam_files = Dir.glob("/root/.cme/logs/*.sam")
 end
 
-puts "Hashes in clean format for cracking...."
-clean_hashes.each {|hash| puts "#{hash[0]}_#{hash[1]}_#{hash[3]}"}
+def find_file_dates
+  time_options = []
+  read_cme_files.each do |file|
+    unless time_options.include?(File.mtime(file).strftime("%d/%m/%Y"))
+      time_options << File.mtime(file).strftime("%d/%m/%Y")
+    end
+  end
+  time_options
+end
 
-puts "\nAffected hosts"
+def user_file_selection
+  prompt  = TTY::Prompt.new
+  @choices = prompt.multi_select("Which day's hashes shall we work with?", find_file_dates)
+  @choices.uniq!
+end
 
-affected_hosts = clean_hashes.uniq { |e| e[0]}
-affected_hosts.each {|a| puts "#{a[0]}\t#{a[2]}"}
+def remove_unwanted_dates
+  @keepfiles = read_cme_files.keep_if { |file| @choices.any?(File.mtime(file).strftime("%d/%m/%Y"))}
+end
+
+def clean_hashes
+  @hashes      = []
+  @crackme     = []
+  ipaddr_regex = /((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/
+  host_regex   = /(?:(?!_((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)).)*/
+  @keepfiles.each do |file|
+    ipaddr   = File.basename(file, ".*").match(ipaddr_regex).to_s
+    hostname = File.basename(file, ".*").match(host_regex).to_s
+    @hashes  << File.readlines(file).each {|line| line.prepend("#{ipaddr}:#{hostname}:")}
+    @crackme << File.readlines(file).each {|line| line.prepend("#{ipaddr}_#{hostname}_")}
+  end
+  @hashes = @hashes.flatten.uniq
+  @grouped_hashes = @hashes.group_by {|ele| ele.split(":")[5]}
+end
+
+def display_reuse
+	group = 1
+  puts "Reuse Identified For the Following Groups"
+	@grouped_hashes.each do |k, v|
+		if v.length > 1
+		puts "GROUP: #{group}"
+    puts "IP Address\tHostname\tUser"
+	    v.each do |val|
+	    	puts "#{val.split(":")[0]}\t#{val.split(":")[1]}\t#{val.split(":")[2]}"
+	    end
+	    group += 1
+		end
+	end
+end
+
+def write_hash_file
+  filename = "hashes_#{Time.now.strftime("%d%b%Y_%H%M%S")}.txt"
+  File.open(filename, 'w') { |f| f.puts(@crackme.join())}
+  puts "Hashes written to #{filename}"
+end
+
+user_file_selection
+remove_unwanted_dates
+clean_hashes
+display_reuse
+write_hash_file
