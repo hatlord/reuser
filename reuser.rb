@@ -40,6 +40,7 @@ def clean_hashes
     @crackme << File.readlines(file).each {|line| line.prepend("#{ipaddr}_#{hostname}_")}
   end
   @hashes = @hashes.flatten.uniq
+  @hashes.delete_if { |line| line =~ /Guest:/}
   @grouped_hashes = @hashes.group_by {|ele| ele.split(":")[5]}
 end
 
