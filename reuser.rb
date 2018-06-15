@@ -25,7 +25,7 @@ def user_file_selection
 end
 
 def remove_unwanted_dates
-  @keepfiles = read_cme_files.keep_if { |file| @choices.any?(File.mtime(file).strftime("%d/%m/%Y"))}
+  @keepfiles = read_cme_files.keep_if { |file| @choices.any? {|i| i == File.mtime(file).strftime("%d/%m/%Y") } }
 end
 
 def clean_hashes
