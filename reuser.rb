@@ -20,7 +20,7 @@ end
 
 def user_file_selection
   prompt  = TTY::Prompt.new
-  @choices = prompt.multi_select("Which day's hashes shall we work with?", find_file_dates)
+  @choices = prompt.multi_select("Which day's hashes shall we work with?", find_file_dates, per_page: 12)
   @choices.uniq!
 end
 
