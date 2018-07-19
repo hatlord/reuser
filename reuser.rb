@@ -49,7 +49,8 @@ def display_reuse
   puts "Reuse Identified For the Following Groups"
 	@grouped_hashes.each do |k, v|
 		if v.length > 1
-		puts "GROUP: #{group}"
+		redacted = k.gsub(k[10..18], "<REDACTED>")
+		puts "GROUP: #{group} - Hash: #{redacted}"
     puts "IP Address\tHostname\tUser"
 	    v.each do |val|
 	    	puts "#{val.split(":")[0]}\t#{val.split(":")[1]}\t#{val.split(":")[2]}"
